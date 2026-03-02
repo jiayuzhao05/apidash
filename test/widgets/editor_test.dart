@@ -81,4 +81,96 @@ void main() {
     await tester.pumpAndSettle();
     expect(changedValue, 'entering 123 for testing content body  ');
   });
+
+  testWidgets('TextFieldEditor preserves range selection on text update', (tester) async {
+  const initialValue = 'hello world';
+  const updatedValue = 'hello world!';
+
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: kThemeDataLight,
+      home: Scaffold(
+        body: TextFieldEditor(
+          fieldKey: 'testKey',
+          initialValue: initialValue,
+        ),
+      ),
+    ),
+  );
+
+  // Grab controller via EditableText.
+  EditableText editableText = tester.widget<EditableText>(find.byType(EditableText));
+  TextEditingController controller = editableText.controller;
+
+  // Set a range selection [2, 7]
+  controller.selection = const TextSelection(baseOffset: 2, extentOffset: 7);
+  await tester.pump();
+
+  // Update initialValue with same fieldKey (simulates external update)
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: kThemeDataLight,
+      home: Scaffold(
+        body: TextFieldEditor(
+          fieldKey: 'testKey',
+          initialValue: updatedValue,
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+
+  editableText = tester.widget<EditableText>(find.byType(EditableText));
+  controller = editableText.controller;
+
+  expect(controller.text, updatedValue);
+  expect(controller.selection.baseOffset, 2);
+  expect(controller.selection.extentOffset, 7);
+});
+
+testWidgets('TextFieldEditor clamps selection when text shrinks', (tester) async {
+  const initialValue = 'hello world';
+  const updatedValue = 'hello'; // shorter (len=5)
+
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: kThemeDataLight,
+      home: Scaffold(
+        body: TextFieldEditor(
+          fieldKey: 'testKey',
+          initialValue: initialValue,
+        ),
+      ),
+    ),
+  );
+
+  EditableText editableText = tester.widget<EditableText>(find.byType(EditableText));
+  TextEditingController controller = editableText.controller;
+
+  // Selection points beyond new text length after shrink
+  controller.selection = const TextSelection(baseOffset: 5, extentOffset: 11);
+  await tester.pump();
+
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: kThemeDataLight,
+      home: Scaffold(
+        body: TextFieldEditor(
+          fieldKey: 'testKey',
+          initialValue: updatedValue,
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+
+  editableText = tester.widget<EditableText>(find.byType(EditableText));
+  controller = editableText.controller;
+
+  expect(controller.text, updatedValue);
+
+  // Both offsets must be within [0, updatedValue.length]
+  expect(controller.selection.baseOffset, inInclusiveRange(0, updatedValue.length));
+  expect(controller.selection.extentOffset, inInclusiveRange(0, updatedValue.length));
+}
 }
