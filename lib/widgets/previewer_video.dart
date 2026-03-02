@@ -24,10 +24,15 @@ class _VideoPreviewerState extends State<VideoPreviewer> {
   bool _isPlaying = false;
   late File _tempVideoFile;
   bool _showControls = false;
+  bool _isTestEnv = kIsRunningTests;
 
   @override
   void initState() {
     super.initState();
+    if (_isTestEnv) {
+      _initializeVideoPlayerFuture = Future.value();
+      return;
+    }
     registerWithAllPlatforms();
     _initializeVideoPlayerFuture = _initializeVideoPlayer();
   }
@@ -62,6 +67,10 @@ class _VideoPreviewerState extends State<VideoPreviewer> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isTestEnv) {
+      // In tests, avoid initializing platform video backends & timers.
+      return const SizedBox.shrink();
+    }
     final iconColor = Theme.of(context).iconTheme.color;
     final progressBarColors = VideoProgressColors(
       playedColor: iconColor!,
@@ -135,18 +144,21 @@ class _VideoPreviewerState extends State<VideoPreviewer> {
 
   @override
   void dispose() {
-    _videoController.pause();
-    _videoController.dispose();
-    if (!kIsRunningTests) {
-      Future.delayed(const Duration(seconds: 1), () async {
-        try {
-          await _tempVideoFile.delete();
-        } catch (e) {
-          debugPrint("VideoPreviewer dispose(): $e");
-          return;
-        }
-      });
+    if (!_isTestEnv) {
+      _videoController.pause();
+      _videoController.dispose();
+      _deleteTempFile();
     }
     super.dispose();
+  }
+
+  Future<void> _deleteTempFile() async {
+    try {
+      if (await _tempVideoFile.exists()) {
+        await _tempVideoFile.delete();
+      }
+    } catch (e) {
+      debugPrint("VideoPreviewer dispose(): $e");
+    }
   }
 }

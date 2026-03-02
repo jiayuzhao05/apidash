@@ -4,6 +4,26 @@ import 'package:apidash_design_system/apidash_design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+class TextFieldEditor extends StatefulWidget {
+  const TextFieldEditor({
+    super.key,
+    required this.fieldKey,
+    this.initialValue,
+    this.readOnly = false,
+    this.hintText,
+    this.onChanged,
+  });
+
+  final String fieldKey;
+  final String? initialValue;
+  final bool readOnly;
+  final String? hintText;
+  final ValueChanged<String>? onChanged;
+
+  @override
+  State<TextFieldEditor> createState() => _TextFieldEditorState();
+}
+
 class _TextFieldEditorState extends State<TextFieldEditor> {
   late TextEditingController controller;
   late final FocusNode editorFocusNode;
@@ -76,10 +96,10 @@ class _TextFieldEditorState extends State<TextFieldEditor> {
 
       // Clamp both base & extent to the new text length.
       final len = controller.text.length;
-      int clamp(int v) => v.clamp(0, len);
+      int clampOffset(int v) => v.clamp(0, len) as int;
 
-      final base = clamp(oldSel.baseOffset);
-      final extent = clamp(oldSel.extentOffset);
+      final base = clampOffset(oldSel.baseOffset);
+      final extent = clampOffset(oldSel.extentOffset);
 
       controller.selection = TextSelection(
         baseOffset: base,
